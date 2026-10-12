@@ -5,7 +5,6 @@ See HW repo for instructions on how to switch between CAN and RS-485-mode.
 
 TODO:
 - Transceiver control in software instead of hardware jumpers
-- RS-485 echo control in software
 - i2c/SPI/GPIO-USB-bridge mode
 
 # candleLight_gsusb

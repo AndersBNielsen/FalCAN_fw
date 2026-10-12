@@ -208,6 +208,12 @@ THE SOFTWARE.
 	#define WS2812_Pin				 GPIO_PIN_0
 	#define WS2812_LED_COUNT			 30
 
+	#define CONFIG_RS485_DE_RE		 1
+	#define RS485_DE_GPIO_Port		 GPIOB
+	#define RS485_DE_Pin				 GPIO_PIN_15
+	#define RS485_RE_GPIO_Port		 GPIOB
+	#define RS485_RE_Pin				 GPIO_PIN_14
+
 /*************** STM32F072 ***************/
 
 #elif defined(BOARD_CANable_MKS)

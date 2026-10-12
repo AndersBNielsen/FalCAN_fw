@@ -2,7 +2,9 @@
 
 #include <string.h>
 
+#include "config.h"
 #include "hal_include.h"
+#include "util_macro.h"
 
 /* Optional hooks for activity indication (e.g. blink LEDs).
  * Implement these elsewhere (non-weak) to handle RX/TX events.
@@ -35,6 +37,71 @@ static volatile uint16_t tx_tail;
 
 static bool usart_ready;
 
+#if IS_ENABLED(CONFIG_RS485_DE_RE)
+#ifndef RS485_DE_GPIO_Port
+#error "RS485_DE_GPIO_Port must be defined when CONFIG_RS485_DE_RE is enabled"
+#endif
+#ifndef RS485_DE_Pin
+#error "RS485_DE_Pin must be defined when CONFIG_RS485_DE_RE is enabled"
+#endif
+#ifndef RS485_RE_GPIO_Port
+#error "RS485_RE_GPIO_Port must be defined when CONFIG_RS485_DE_RE is enabled"
+#endif
+#ifndef RS485_RE_Pin
+#error "RS485_RE_Pin must be defined when CONFIG_RS485_DE_RE is enabled"
+#endif
+
+static bool rs485_re_owned;
+
+static void rs485_tx_mode(void)
+{
+	RS485_DE_GPIO_Port->BSRR = RS485_DE_Pin;
+	if (rs485_re_owned) {
+		RS485_RE_GPIO_Port->BSRR = RS485_RE_Pin;
+	}
+}
+
+static void rs485_rx_mode(void)
+{
+	RS485_DE_GPIO_Port->BSRR = (uint32_t)RS485_DE_Pin << 16u;
+	if (rs485_re_owned) {
+		RS485_RE_GPIO_Port->BSRR = (uint32_t)RS485_RE_Pin << 16u;
+	}
+}
+
+static void usart_rs485_tx_begin(void)
+{
+	USART1->CR1 &= ~USART_CR1_TCIE;
+	USART1->ICR = USART_ICR_TCCF;
+	rs485_tx_mode();
+}
+
+static void rs485_claim_re_pin(void)
+{
+	if (rs485_re_owned || tx_head != tx_tail) {
+		return;
+	}
+	if (HAL_GPIO_ReadPin(RS485_RE_GPIO_Port, RS485_RE_Pin) != GPIO_PIN_RESET) {
+		return;
+	}
+	HAL_GPIO_WritePin(RS485_RE_GPIO_Port, RS485_RE_Pin, GPIO_PIN_RESET);
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+	GPIO_InitStruct.Pin = RS485_RE_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(RS485_RE_GPIO_Port, &GPIO_InitStruct);
+	rs485_re_owned = true;
+}
+
+#else
+
+static void usart_rs485_tx_begin(void)
+{
+}
+
+#endif
+
 static uint16_t rb_next(uint16_t cur, uint16_t size)
 {
 	uint16_t next = (uint16_t)(cur + 1u);
@@ -51,7 +118,8 @@ static size_t rb_count(uint16_t head, uint16_t tail, uint16_t size)
 
 static void usart_enable_txe_irq_if_needed(void)
 {
-	if (tx_head != tx_tail) {
+	if (tx_head != tx_tail && !(USART1->CR1 & USART_CR1_TXEIE)) {
+		usart_rs485_tx_begin();
 		USART1->CR1 |= USART_CR1_TXEIE;
 	}
 }
@@ -84,6 +152,16 @@ static void usart_config_pins(void)
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
 	GPIO_InitStruct.Alternate = GPIO_AF0_USART1;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+#if IS_ENABLED(CONFIG_RS485_DE_RE)
+	rs485_rx_mode();
+	GPIO_InitStruct.Pin = RS485_DE_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	GPIO_InitStruct.Alternate = 0;
+	HAL_GPIO_Init(RS485_DE_GPIO_Port, &GPIO_InitStruct);
+#endif
 }
 
 void uart_bridge_init(const uart_line_coding_t *coding)
@@ -184,6 +262,9 @@ size_t uart_bridge_read(uint8_t *data, size_t max_len)
 
 void uart_bridge_poll(void)
 {
+#if IS_ENABLED(CONFIG_RS485_DE_RE)
+	rs485_claim_re_pin();
+#endif
 	usart_enable_txe_irq_if_needed();
 }
 
@@ -204,12 +285,25 @@ void USART1_IRQHandler(void)
 	if ((USART1->CR1 & USART_CR1_TXEIE) && (isr & USART_ISR_TXE)) {
 		if (tx_head == tx_tail) {
 			USART1->CR1 &= ~USART_CR1_TXEIE;
+#if IS_ENABLED(CONFIG_RS485_DE_RE)
+			USART1->CR1 |= USART_CR1_TCIE;
+#endif
 		} else {
 			USART1->TDR = tx_buf[tx_tail];
 			tx_tail = rb_next(tx_tail, UART_BRIDGE_TX_BUF_SIZE);
 			uart_bridge_on_tx_activity();
 		}
 	}
+
+#if IS_ENABLED(CONFIG_RS485_DE_RE)
+	if ((USART1->CR1 & USART_CR1_TCIE) && (USART1->ISR & USART_ISR_TC)) {
+		USART1->CR1 &= ~USART_CR1_TCIE;
+		USART1->ICR = USART_ICR_TCCF;
+		if (!(USART1->CR1 & USART_CR1_TXEIE)) {
+			rs485_rx_mode();
+		}
+	}
+#endif
 
 	/* Clear error flags by writing to ICR. */
 	if (isr & (USART_ISR_ORE | USART_ISR_FE | USART_ISR_NE | USART_ISR_PE)) {
