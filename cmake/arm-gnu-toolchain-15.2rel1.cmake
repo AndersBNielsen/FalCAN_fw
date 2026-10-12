@@ -10,6 +10,8 @@ set(CMAKE_SYSTEM_PROCESSOR arm)
 # Allow override for nonstandard installs.
 set(ARM_GNU_TOOLCHAIN_BIN_DIR "/Applications/ArmGNUToolchain/15.2.rel1/arm-none-eabi/bin" CACHE PATH "Arm GNU toolchain bin dir")
 
+list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES ARM_GNU_TOOLCHAIN_BIN_DIR)
+
 set(_ARM_GNU_TOOLCHAIN_SEARCH_DIRS
 	"${ARM_GNU_TOOLCHAIN_BIN_DIR}"
 	"/opt/homebrew/bin"

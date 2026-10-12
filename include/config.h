@@ -198,7 +198,6 @@ THE SOFTWARE.
 	#define LEDTX_Mode				 GPIO_MODE_OUTPUT_PP
 	#define LEDTX_Active_High		 0
 
-	/* Startup mode select: active-high input. High at boot -> USB-to-UART mode. */
 	#define USB_UART_MODESEL_GPIO_Port GPIOB
 	#define USB_UART_MODESEL_Pin		 GPIO_PIN_14
 
@@ -207,6 +206,12 @@ THE SOFTWARE.
 	#define WS2812_GPIO_Port			 GPIOA
 	#define WS2812_Pin				 GPIO_PIN_0
 	#define WS2812_LED_COUNT			 30
+
+	#define CONFIG_RS485_DE_RE		 1
+	#define RS485_DE_GPIO_Port		 GPIOB
+	#define RS485_DE_Pin				 GPIO_PIN_15
+	#define RS485_RE_GPIO_Port		 GPIOB
+	#define RS485_RE_Pin				 GPIO_PIN_14
 
 /*************** STM32F072 ***************/
 
@@ -467,4 +472,19 @@ THE SOFTWARE.
 #define TERM_GPIO_Port	 GPIOA
 #define TERM_Mode		 GPIO_MODE_OUTPUT_PP
 #define TERM_Active_High 1
+#endif
+
+#if defined(RS485_DE_Pin) || defined(RS485_RE_Pin)
+#ifndef CONFIG_RS485_DE_RE
+#error Defined RS485_DE_Pin or RS485_RE_Pin without CONFIG_RS485_DE_RE
+#endif
+#endif
+
+#ifdef CONFIG_RS485_DE_RE
+#if !defined(RS485_DE_GPIO_Port) || !defined(RS485_DE_Pin)
+#error CONFIG_RS485_DE_RE requires RS485_DE_GPIO_Port and RS485_DE_Pin
+#endif
+#if !defined(RS485_RE_GPIO_Port) || !defined(RS485_RE_Pin)
+#error CONFIG_RS485_DE_RE requires RS485_RE_GPIO_Port and RS485_RE_Pin
+#endif
 #endif

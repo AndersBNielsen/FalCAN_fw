@@ -166,5 +166,15 @@ void gpio_init(void)
 	HAL_GPIO_Init(USB_UART_MODESEL_GPIO_Port, &GPIO_InitStruct);
 #endif
 
+#if IS_ENABLED(CONFIG_RS485_DE_RE)
+	HAL_GPIO_WritePin(RS485_DE_GPIO_Port, RS485_DE_Pin, GPIO_PIN_RESET);
+	GPIO_InitStruct.Pin = RS485_DE_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	GPIO_InitStruct.Alternate = 0;
+	HAL_GPIO_Init(RS485_DE_GPIO_Port, &GPIO_InitStruct);
+#endif
+
 	gpio_init_term();
 }
