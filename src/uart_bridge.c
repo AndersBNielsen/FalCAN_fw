@@ -38,19 +38,6 @@ static volatile uint16_t tx_tail;
 static bool usart_ready;
 
 #if IS_ENABLED(CONFIG_RS485_DE_RE)
-#ifndef RS485_DE_GPIO_Port
-#error "RS485_DE_GPIO_Port must be defined when CONFIG_RS485_DE_RE is enabled"
-#endif
-#ifndef RS485_DE_Pin
-#error "RS485_DE_Pin must be defined when CONFIG_RS485_DE_RE is enabled"
-#endif
-#ifndef RS485_RE_GPIO_Port
-#error "RS485_RE_GPIO_Port must be defined when CONFIG_RS485_DE_RE is enabled"
-#endif
-#ifndef RS485_RE_Pin
-#error "RS485_RE_Pin must be defined when CONFIG_RS485_DE_RE is enabled"
-#endif
-
 static bool rs485_re_owned;
 
 static void rs485_tx_mode(void)
@@ -236,7 +223,6 @@ size_t uart_bridge_write(const uint8_t *data, size_t len)
 		tx_head = next;
 	}
 
-	usart_enable_txe_irq_if_needed();
 	return written;
 }
 
