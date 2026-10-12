@@ -3,8 +3,15 @@ This is a fork of candleLight_fw with support for RS-485 and RS-422 with the Fal
 
 See HW repo for instructions on how to switch between CAN and RS-485-mode. 
 
+RS-485 half-duplex on the RS-485/422-TX connector (J8): short JP4 at reset to boot
+USB-to-UART mode, then open JP4 so the firmware takes over the receiver pin. The
+firmware asserts the transceiver driver for each transmit burst and releases the bus
+at the last stop bit, so no local echo reaches the host and slave replies get through.
+Keep JP4 closed instead for full-duplex RS-422 with JP1, JP2 and JP3 shorted; the
+firmware never drives the receiver pin then.
+
 TODO:
-- Transceiver control in software instead of hardware jumpers
+- Receiver routing in software instead of hardware jumpers
 - i2c/SPI/GPIO-USB-bridge mode
 
 # candleLight_gsusb
